@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TournamentStage, Team, SongItem } from './types';
+import { TournamentStage, Team, SongItem, TournamentRules } from './types';
 import { 
   INITIAL_TEAMS, 
   STAGE_1_SONGS, 
@@ -8,6 +8,8 @@ import {
   STAGE_4_FINALIST_1_SONGS, 
   STAGE_4_FINALIST_2_SONGS 
 } from './data/tournamentData';
+import { DEFAULT_STAGE_1_CATEGORIES } from './components/CategoryManagerModal';
+import { DEFAULT_TOURNAMENT_RULES } from './data/defaultRules';
 import { Header } from './components/Header';
 import { Scoreboard } from './components/Scoreboard';
 import { Stage1MusicCipher } from './components/stages/Stage1MusicCipher';
@@ -28,6 +30,8 @@ import { Download } from 'lucide-react';
 const STORAGE_KEYS = {
   STAGE: 'musiqi_labirinti_stage',
   TEAMS: 'musiqi_labirinti_teams',
+  S1_CATEGORIES: 'musiqi_labirinti_s1_categories',
+  RULES: 'musiqi_labirinti_rules',
   S1_SONGS: 'musiqi_labirinti_s1_songs',
   S2_SONGS: 'musiqi_labirinti_s2_songs',
   S3_SONGS: 'musiqi_labirinti_s3_songs',
@@ -48,6 +52,16 @@ export default function App() {
   const [teams, setTeams] = useState<Team[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.TEAMS);
     return saved ? JSON.parse(saved) : INITIAL_TEAMS;
+  });
+
+  const [stage1Categories, setStage1Categories] = useState<string[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.S1_CATEGORIES);
+    return saved ? JSON.parse(saved) : DEFAULT_STAGE_1_CATEGORIES;
+  });
+
+  const [tournamentRules, setTournamentRules] = useState<TournamentRules>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.RULES);
+    return saved ? JSON.parse(saved) : DEFAULT_TOURNAMENT_RULES;
   });
 
   const [stage1Songs, setStage1Songs] = useState<SongItem[]>(() => {
@@ -135,6 +149,14 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.TEAMS, JSON.stringify(teams));
   }, [teams]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.S1_CATEGORIES, JSON.stringify(stage1Categories));
+  }, [stage1Categories]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.RULES, JSON.stringify(tournamentRules));
+  }, [tournamentRules]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.S1_SONGS, JSON.stringify(stage1Songs));
@@ -251,6 +273,35 @@ export default function App() {
     }
   };
 
+  const handleUpdateStage1Categories = (newCategories: string[], renameMap: Record<string, string>) => {
+    setStage1Categories(newCategories);
+
+    // If any category was renamed, update corresponding stage 1 songs
+    if (Object.keys(renameMap).length > 0) {
+      setStage1Songs(prev =>
+        prev.map(song => {
+          const currentCat = song.category === '80-ci illər' ? 'Retro mahnılar' : song.category;
+          if (currentCat && renameMap[currentCat]) {
+            return {
+              ...song,
+              category: renameMap[currentCat]
+            };
+          }
+          return song;
+        })
+      );
+    }
+  };
+
+  const handleSaveTournamentRules = (updatedRules: TournamentRules) => {
+    setTournamentRules(updatedRules);
+  };
+
+  const handleResetTournamentRules = () => {
+    setTournamentRules(DEFAULT_TOURNAMENT_RULES);
+    localStorage.removeItem(STORAGE_KEYS.RULES);
+  };
+
   const championTeam = teams.find(t => t.id === championTeamId) || teams[0];
   const runnerUpTeam = teams.find(t => t.status === 'runner_up');
 
@@ -302,9 +353,11 @@ export default function App() {
           <Stage1MusicCipher
             songs={stage1Songs}
             teams={teams}
+            categories={stage1Categories}
             onAwardPoints={handleAwardPoints}
             onProceedToNextStage={() => setCurrentStage(2)}
             onOpenLightbox={handleOpenLightbox}
+            onUpdateCategories={handleUpdateStage1Categories}
           />
         )}
 
@@ -387,7 +440,15 @@ export default function App() {
       />
 
       {/* Modals */}
-      {showRulesModal && <RulesModal onClose={() => setShowRulesModal(false)} />}
+      {showRulesModal && (
+        <RulesModal
+          rules={tournamentRules}
+          categories={stage1Categories}
+          onSaveRules={handleSaveTournamentRules}
+          onResetRules={handleResetTournamentRules}
+          onClose={() => setShowRulesModal(false)}
+        />
+      )}
 
       {showInstallModal && <InstallAppModal onClose={() => setShowInstallModal(false)} />}
 
@@ -398,6 +459,7 @@ export default function App() {
           stage3Songs={stage3Songs}
           finalist1Songs={finalist1Songs}
           finalist2Songs={finalist2Songs}
+          stage1Categories={stage1Categories}
           onSave={(s1, s2, s3, f1, f2) => {
             setStage1Songs(s1);
             setStage2Songs(s2);

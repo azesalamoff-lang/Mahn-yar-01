@@ -53,6 +53,7 @@ interface SongManagerModalProps {
   stage3Songs: SongItem[];
   finalist1Songs: SongItem[];
   finalist2Songs: SongItem[];
+  stage1Categories?: string[];
   onSave: (
     s1: SongItem[],
     s2: SongItem[],
@@ -83,6 +84,7 @@ export const SongManagerModal: React.FC<SongManagerModalProps> = ({
   stage3Songs,
   finalist1Songs,
   finalist2Songs,
+  stage1Categories: stage1CategoriesProp,
   onSave,
   onClose
 }) => {
@@ -126,9 +128,13 @@ export const SongManagerModal: React.FC<SongManagerModalProps> = ({
   const fileInputRefs = useRef<{ [songId: string]: HTMLInputElement | null }>({});
   const newFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Derive unique categories from current stage 1 songs
+  // Derive unique categories from current stage 1 songs or props
+  const baseCategories = stage1CategoriesProp && stage1CategoriesProp.length > 0 
+    ? stage1CategoriesProp 
+    : STAGE_1_DEFAULT_CATEGORIES;
+
   const stage1Categories = Array.from(
-    new Set([...STAGE_1_DEFAULT_CATEGORIES, ...s1.map(s => s.category).filter(Boolean) as string[]])
+    new Set([...baseCategories, ...s1.map(s => s.category).filter(Boolean) as string[]])
   );
 
   const getCurrentSongsList = (): { 

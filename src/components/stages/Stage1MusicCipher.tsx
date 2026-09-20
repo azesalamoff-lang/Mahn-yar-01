@@ -15,7 +15,8 @@ import {
   X,
   XCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  Edit3
 } from 'lucide-react';
 import { 
   playSongAudioOrMelody, 
@@ -28,21 +29,26 @@ import {
 } from '../../utils/soundEffects';
 import { InteractiveImageSlot } from '../InteractiveImageSlot';
 import { SongRevealedBanner } from '../SongRevealedBanner';
+import { CategoryManagerModal, DEFAULT_STAGE_1_CATEGORIES } from '../CategoryManagerModal';
 
 interface Stage1MusicCipherProps {
   songs: SongItem[];
   teams: Team[];
+  categories?: string[];
   onAwardPoints: (songId: string, teamId: string, points: number) => void;
   onProceedToNextStage: () => void;
   onOpenLightbox: (url: string, title: string, subtitle?: string) => void;
+  onUpdateCategories?: (newCategories: string[], renameMap: Record<string, string>) => void;
 }
 
 export const Stage1MusicCipher: React.FC<Stage1MusicCipherProps> = ({
   songs,
   teams,
+  categories: categoriesProp,
   onAwardPoints,
   onProceedToNextStage,
-  onOpenLightbox
+  onOpenLightbox,
+  onUpdateCategories
 }) => {
   const [activeSong, setActiveSong] = useState<SongItem | null>(null);
   const [playbackStatus, setPlaybackStatus] = useState<'idle' | 'playing' | 'paused'>('idle');
@@ -50,6 +56,10 @@ export const Stage1MusicCipher: React.FC<Stage1MusicCipherProps> = ({
   const [isRevealed, setIsRevealed] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<string>(teams[0]?.id || '');
   const [hostPeekSecret, setHostPeekSecret] = useState(false);
+
+  // Category Editor Modal
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categoryModalIndex, setCategoryModalIndex] = useState(0);
 
   // 5-second Fullscreen Buzzer Screen
   const [buzzedTeamId, setBuzzedTeamId] = useState<string | null>(null);
@@ -120,11 +130,12 @@ export const Stage1MusicCipher: React.FC<Stage1MusicCipherProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [teams, handleBuzz]);
 
-  // 4 canonical default categories, plus any custom categories from songs
-  const defaultCategories = ['Retro mahnılar', '90-cı illər', 'Kino musiqiləri', 'Xalq mahnıları'];
-  const categories = Array.from(
-    new Set([...defaultCategories, ...songs.map(s => (s.category === '80-ci illər' ? 'Retro mahnılar' : s.category)).filter(Boolean)])
-  ) as string[];
+  // 4 canonical categories (customizable by host)
+  const categories = (categoriesProp && categoriesProp.length > 0)
+    ? categoriesProp
+    : Array.from(
+        new Set([...DEFAULT_STAGE_1_CATEGORIES, ...songs.map(s => (s.category === '80-ci illər' ? 'Retro mahnılar' : s.category)).filter(Boolean)])
+      ) as string[];
 
   const handleOpenSong = (song: SongItem) => {
     stopAllPlayback();
@@ -230,13 +241,30 @@ export const Stage1MusicCipher: React.FC<Stage1MusicCipherProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-4 bg-slate-900/80 px-4 py-3 rounded-xl border border-slate-800 shrink-0">
-          <div className="text-center">
+        <div className="flex flex-wrap items-center gap-3 bg-slate-900/80 px-4 py-3 rounded-xl border border-slate-800 shrink-0">
+          <div className="text-center pr-2 border-r border-slate-800">
             <span className="text-xs text-slate-400 block">Tapılan Mahnılar</span>
             <span className="text-2xl font-black text-amber-300 font-display">
               {totalAnswered} <span className="text-xs text-slate-500 font-normal">/ 16</span>
             </span>
           </div>
+
+          {onUpdateCategories && (
+            <button
+              id="stage1-edit-categories-btn"
+              type="button"
+              onClick={() => {
+                setCategoryModalIndex(0);
+                setShowCategoryModal(true);
+              }}
+              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 border border-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="4 kateqoriyanın adlarını dəyişdirin"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Kateqoriyaları Dəyiş</span>
+            </button>
+          )}
+
           <button
             id="proceed-to-stage2-btn"
             onClick={onProceedToNextStage}
@@ -250,7 +278,7 @@ export const Stage1MusicCipher: React.FC<Stage1MusicCipherProps> = ({
 
       {/* 4x4 Grid Board */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {categories.map((category) => {
+        {categories.map((category, catIdx) => {
           const categorySongs = songs.filter(s => s.category === category || (category === 'Retro mahnılar' && s.category === '80-ci illər'));
 
           return (
@@ -270,9 +298,24 @@ export const Stage1MusicCipher: React.FC<Stage1MusicCipherProps> = ({
                     onOpenLightbox={onOpenLightbox}
                     defaultIcon={<Disc3 className="w-4 h-4 text-amber-400 animate-spin-slow" />}
                   />
-                  <h3 className="font-bold text-sm text-slate-200 font-display truncate">
-                    {category}
-                  </h3>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <h3 className="font-bold text-sm text-slate-200 font-display truncate">
+                      {category}
+                    </h3>
+                    {onUpdateCategories && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCategoryModalIndex(catIdx);
+                          setShowCategoryModal(true);
+                        }}
+                        className="p-1 rounded text-slate-500 hover:text-amber-400 hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                        title={`"${category}" adını dəyişdir`}
+                      >
+                        <Edit3 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded-md shrink-0">
                   30 xal
@@ -739,6 +782,20 @@ export const Stage1MusicCipher: React.FC<Stage1MusicCipherProps> = ({
           points={revealedBanner.points}
           durationSeconds={5}
           onClose={() => setRevealedBanner(null)}
+        />
+      )}
+
+      {/* Category Manager Modal */}
+      {showCategoryModal && onUpdateCategories && (
+        <CategoryManagerModal
+          isOpen={showCategoryModal}
+          categories={categories}
+          songs={songs}
+          initialActiveIndex={categoryModalIndex}
+          onSave={(newCats, renameMap) => {
+            onUpdateCategories(newCats, renameMap);
+          }}
+          onClose={() => setShowCategoryModal(false)}
         />
       )}
     </div>

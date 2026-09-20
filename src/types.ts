@@ -80,3 +80,23 @@ export interface ScoreLogEntry {
   points: number;
   reason: string;
 }
+
+export interface StageRuleItem {
+  stageNumber: number;
+  name: string;
+  rules: string;
+  points: string;
+  result: string;
+}
+
+export interface TournamentRules {
+  title: string;
+  subtitle: string;
+  date: string;
+  location: string;
+  participants: string;
+  description: string;
+  goal: string;
+  principle: string;
+  stages: StageRuleItem[];
+}
